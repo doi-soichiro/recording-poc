@@ -25,6 +25,14 @@
         録音開始
       </button>
     </div>
+    <div class="pt-4 flex items-center justify-center">
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+        @click="recordingToTest"
+      >
+        音声認識開始
+      </button>
+    </div>
   </div>
 </template>
 
@@ -63,6 +71,8 @@ const requestMicrophonePermission = async () => {
                       + 'edge://settings/content/microphone'
         break
     }
+
+    // TODO: MediaStreamStoreを作成して、streamを再利用するようにする
     stream = await navigator.mediaDevices.getUserMedia({ audio: true })
   }
   catch (err) {
@@ -202,7 +212,45 @@ const recordedDataPlay = async (targetId: number): Promise<void> => {
   })
 }
 
-// 音声テキスト化処理
+// リアルタイム音声テキスト化処理
+const recordingToTest = async () => {
+  const speechRecognitionRaw
+  = typeof (window as any).SpeechRecognition !== 'undefined'
+    ? (window as any).SpeechRecognition
+    : (window as any).webkitSpeechRecognition
+
+  const recognition = new (speechRecognitionRaw as any)()
+
+  recognition.lang = 'ja-JP' // 言語設定
+  recognition.interimResults = false // 中間結果の取得
+  recognition.continuous = true // 連続認識
+
+  let transcriptText = ''
+
+  recognition.onresult = (event: any) => {
+    console.log('onresult:', event.results)
+    const lastResult = event.results[event.results.length - 1]
+    transcriptText += lastResult[0].transcript
+  }
+
+  recognition.onerror = (event: any) => {
+    console.error('認識エラー:', event.error)
+  }
+
+  recognition.onend = () => {
+    console.log('認識終了')
+    alert(`音声認識結果: ${transcriptText}`)
+  }
+
+  // 認識開始
+  alert('音声認識を開始します。')
+  recognition.start()
+
+  // 3分後に自動停止
+  setTimeout(() => {
+    recognition.stop()
+  }, 180000)
+}
 </script>
 
 <style scoped>
