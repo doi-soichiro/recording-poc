@@ -28,10 +28,21 @@
     <div class="pt-4 flex items-center justify-center">
       <button
         class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-        @click="recordingToTest"
+        @click="startRecognition"
       >
         音声認識開始
       </button>
+    </div>
+    <div class="pt-4 flex items-center justify-center">
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+        @click="stopRecognition"
+      >
+        音声認識停止
+      </button>
+    </div>
+    <div class="pt-4 flex items-center justify-center">
+      {{ transcriptText }}
     </div>
   </div>
 </template>
@@ -181,75 +192,86 @@ const startRecording = async () => {
 }
 
 // 録音データの再生処理
-const recordedDataPlay = async (targetId: number): Promise<void> => {
-  const indexedDBStore = useIndexedDBStore()
-  return new Promise((resolve, reject) => {
-    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readonly')
-    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
-    const request = recordedDataStore.get(targetId)
-    request.onsuccess = () => {
-      const data = request.result
-      if (data?.blob) {
-        const audioUrl = URL.createObjectURL(data.blob)
-        const audio = new Audio(audioUrl)
-        audio.onended = () => {
-          console.log(`ID ${targetId} の再生終了`)
-          resolve()
-        }
-        audio.onerror = (e) => {
-          console.error(`ID ${targetId} の再生エラー`, e)
-          reject(e)
-        }
-        audio.play().catch(reject)
+const transcriptText = ref('')
+const liveText = ref('')
+const voiceRecordStatus = ref('未開始')
+const isRecognizing = ref(false)
+let shouldRestartRecognition = true // 自動再開フラグ
+
+let recognition: any = null
+let flagSpeaking = false
+
+const createRecognitionInstance = (): any => {
+  const SpeechRecognitionClass
+    = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  const recognizer = new SpeechRecognitionClass()
+
+  recognizer.lang = 'ja-JP'
+  recognizer.interimResults = true
+  recognizer.continuous = true
+
+  recognizer.onsoundstart = () => {
+    voiceRecordStatus.value = '認識中'
+  }
+
+  recognizer.onsoundend = () => {
+    voiceRecordStatus.value = '停止中'
+    restartRecognition()
+  }
+
+  recognizer.onerror = () => {
+    voiceRecordStatus.value = 'エラー'
+    if (!flagSpeaking) restartRecognition()
+  }
+
+  recognizer.onresult = (event: any) => {
+    const results = event.results
+    for (let i = event.resultIndex; i < results.length; i++) {
+      const text = results[i][0].transcript
+      console.log('音声認識中:', text)
+      if (results[i].isFinal) {
+        transcriptText.value += `${text}\n`
+        flagSpeaking = false
+        liveText.value = ''
+        restartRecognition()
       }
       else {
-        reject(new Error(`ID ${targetId} のデータが見つかりませんでした`))
+        liveText.value = text
+        flagSpeaking = true
       }
     }
-    request.onerror = () => {
-      reject(request.error)
-    }
-  })
+  }
+  return recognizer
 }
 
-// リアルタイム音声テキスト化処理
-const recordingToTest = async () => {
-  const speechRecognitionRaw
-  = typeof (window as any).SpeechRecognition !== 'undefined'
-    ? (window as any).SpeechRecognition
-    : (window as any).webkitSpeechRecognition
+const startRecognition = () => {
+  shouldRestartRecognition = true
 
-  const recognition = new (speechRecognitionRaw as any)()
-
-  recognition.lang = 'ja-JP' // 言語設定
-  recognition.interimResults = false // 中間結果の取得
-  recognition.continuous = true // 連続認識
-
-  let transcriptText = ''
-
-  recognition.onresult = (event: any) => {
-    console.log('onresult:', event.results)
-    const lastResult = event.results[event.results.length - 1]
-    transcriptText += lastResult[0].transcript
-  }
-
-  recognition.onerror = (event: any) => {
-    console.error('認識エラー:', event.error)
-  }
-
-  recognition.onend = () => {
-    console.log('認識終了')
-    alert(`音声認識結果: ${transcriptText}`)
-  }
-
-  // 認識開始
-  alert('音声認識を開始します。')
+  if (recognition) recognition.abort()
+  recognition = createRecognitionInstance()
+  isRecognizing.value = true
+  voiceRecordStatus.value = '開始'
   recognition.start()
+  console.log('音声認識開始')
+}
 
-  // 3分後に自動停止
-  setTimeout(() => {
+const stopRecognition = () => {
+  if (recognition) {
+    shouldRestartRecognition = false // 👈 自動再開禁止
     recognition.stop()
-  }, 180000)
+    voiceRecordStatus.value = '停止'
+    isRecognizing.value = false
+  }
+}
+
+const restartRecognition = () => {
+  if (!shouldRestartRecognition) return
+
+  if (recognition) {
+    recognition.abort()
+    recognition = createRecognitionInstance()
+    recognition.start()
+  }
 }
 </script>
 
