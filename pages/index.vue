@@ -23,7 +23,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="startRecording2"
         >
-          録音開始
+          録音のみ開始
         </button>
       </div>
       <div class="flex items-center justify-center">
@@ -31,7 +31,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="stopRecording2"
         >
-          録音停止
+          録音のみ停止
         </button>
       </div>
     </div>
@@ -41,7 +41,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="startSpeechRecognition"
         >
-          音声認識開始
+          音声認識のみ開始
         </button>
       </div>
       <div class="flex items-center justify-center">
@@ -49,12 +49,30 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="stopSpeechRecognition"
         >
-          音声認識停止
+          音声認識のみ停止
+        </button>
+      </div>
+    </div>
+    <div class="pt-4 flex justify-center space-x-4">
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="startCareRecording"
+        >
+          録音・音声認識開始
+        </button>
+      </div>
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="stopCareRecording"
+        >
+          録音・音声認識停止
         </button>
       </div>
     </div>
     <div class="pt-4 flex items-center justify-center">
-      {{ speechRecognitionStore.fullResultText }}
+      {{ speechRecognitionStore.getFullResultText() }}
     </div>
   </div>
 </template>
@@ -217,26 +235,9 @@ const stopRecording2 = async () => {
   }
 }
 
-// const startAll = async () => {
-//   await recorderStore.startRecording()
-//   await speechRecognitionStore.startRecognition()
-// }
-
-// const stopAll = async () => {
-//   recorderStore.stopRecording()
-//   await speechRecognitionStore.stopRecognition()
-
-//   const blob = recorderStore.getRecordedBlob()
-//   console.log('録音データ:', blob)
-//   if (blob) {
-//     // 保存処理 or 再生処理
-//     console.log('録音Blob:', blob)
-//   }
-// }
-
 const speechRecognitionStore = useSpeechRecognitionStore()
 
-// 音声認識処理
+// 音声認識開始処理
 const startSpeechRecognition = async () => {
   try {
     await speechRecognitionStore.startRecognition()
@@ -254,6 +255,31 @@ const stopSpeechRecognition = async () => {
   catch (error) {
     console.error('音声認識の停止に失敗:', error)
   }
+}
+
+// 録音・音声認識開始処理
+const startCareRecording = async () => {
+  await recorderStore.startRecording()
+  await speechRecognitionStore.startRecognition()
+}
+
+// 録音・音声認識停止処理
+const stopCareRecording = async () => {
+  await recorderStore.stopRecording()
+  await speechRecognitionStore.stopRecognition()
+
+  // 録音データを取得
+  const recordedBlob = recorderStore.getRecordedBlob()
+  // 音声認識テキストを取得
+  const fullResultText = speechRecognitionStore.getFullResultText()
+  // 録音データ、音声認識テキストが取得できなかった場合、処理を終了
+  if (!recordedBlob && !fullResultText) {
+    console.log('録音データ、音声認識テキストが取得できませんでした。')
+    return
+  }
+  console.log('録音Blob:', recordedBlob)
+  console.log('音声認識結果:', fullResultText)
+  // TODO: 保存処理
 }
 </script>
 

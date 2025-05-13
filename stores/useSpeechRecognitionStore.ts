@@ -67,12 +67,24 @@ export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', (
   }
 
   // 音声認識の停止処理
-  const stopRecognition = () => {
-    if (speechRecognizer) {
+  const stopRecognition = (): Promise<void> => {
+    return new Promise((resolve) => {
       shouldContinueRecognition = false
-      speechRecognizer.stop()
-      speechRecognitionStatus.value = '停止'
-    }
+
+      if (speechRecognizer) {
+      // 音声認識の終了を検知する
+        speechRecognizer.onend = () => {
+          speechRecognitionStatus.value = '停止'
+          console.log('音声認識が終了しました')
+          resolve()
+        }
+
+        speechRecognizer.stop()
+      }
+      else {
+        resolve()
+      }
+    })
   }
 
   // 音声認識の終了・継続処理
@@ -89,8 +101,13 @@ export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', (
     speechRecognizer.start()
   }
 
+  // 音声認識結果テキストの取得
+  const getFullResultText = (): string => {
+    return fullResultText.value
+  }
+
   return {
-    fullResultText,
+    getFullResultText,
     interimText,
     speechRecognitionStatus,
     startRecognition,
