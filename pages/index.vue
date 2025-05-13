@@ -25,24 +25,26 @@
         録音開始
       </button>
     </div>
-    <div class="pt-4 flex items-center justify-center">
-      <button
-        class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-        @click="startRecognition"
-      >
-        音声認識開始
-      </button>
+    <div class="pt-4 flex justify-center space-x-4">
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="startSpeechRecognition"
+        >
+          音声認識開始
+        </button>
+      </div>
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="stopSpeechRecognition"
+        >
+          音声認識停止
+        </button>
+      </div>
     </div>
     <div class="pt-4 flex items-center justify-center">
-      <button
-        class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-        @click="stopRecognition"
-      >
-        音声認識停止
-      </button>
-    </div>
-    <div class="pt-4 flex items-center justify-center">
-      {{ transcriptText }}
+      {{ speechRecognitionStore.fullResultText }}
     </div>
   </div>
 </template>
@@ -191,86 +193,25 @@ const startRecording = async () => {
   }
 }
 
-// 録音データの再生処理
-const transcriptText = ref('')
-const liveText = ref('')
-const voiceRecordStatus = ref('未開始')
-const isRecognizing = ref(false)
-let shouldRestartRecognition = true // 自動再開フラグ
+const speechRecognitionStore = useSpeechRecognitionStore()
 
-let recognition: any = null
-let flagSpeaking = false
-
-const createRecognitionInstance = (): any => {
-  const SpeechRecognitionClass
-    = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-  const recognizer = new SpeechRecognitionClass()
-
-  recognizer.lang = 'ja-JP'
-  recognizer.interimResults = true
-  recognizer.continuous = true
-
-  recognizer.onsoundstart = () => {
-    voiceRecordStatus.value = '認識中'
+// 音声認識処理
+const startSpeechRecognition = async () => {
+  try {
+    await speechRecognitionStore.startRecognition()
   }
-
-  recognizer.onsoundend = () => {
-    voiceRecordStatus.value = '停止中'
-    restartRecognition()
-  }
-
-  recognizer.onerror = () => {
-    voiceRecordStatus.value = 'エラー'
-    if (!flagSpeaking) restartRecognition()
-  }
-
-  recognizer.onresult = (event: any) => {
-    const results = event.results
-    for (let i = event.resultIndex; i < results.length; i++) {
-      const text = results[i][0].transcript
-      console.log('音声認識中:', text)
-      if (results[i].isFinal) {
-        transcriptText.value += `${text}\n`
-        flagSpeaking = false
-        liveText.value = ''
-        restartRecognition()
-      }
-      else {
-        liveText.value = text
-        flagSpeaking = true
-      }
-    }
-  }
-  return recognizer
-}
-
-const startRecognition = () => {
-  shouldRestartRecognition = true
-
-  if (recognition) recognition.abort()
-  recognition = createRecognitionInstance()
-  isRecognizing.value = true
-  voiceRecordStatus.value = '開始'
-  recognition.start()
-  console.log('音声認識開始')
-}
-
-const stopRecognition = () => {
-  if (recognition) {
-    shouldRestartRecognition = false // 👈 自動再開禁止
-    recognition.stop()
-    voiceRecordStatus.value = '停止'
-    isRecognizing.value = false
+  catch (error) {
+    console.error('音声認識の開始に失敗:', error)
   }
 }
 
-const restartRecognition = () => {
-  if (!shouldRestartRecognition) return
-
-  if (recognition) {
-    recognition.abort()
-    recognition = createRecognitionInstance()
-    recognition.start()
+// 音声認識停止処理
+const stopSpeechRecognition = async () => {
+  try {
+    await speechRecognitionStore.stopRecognition()
+  }
+  catch (error) {
+    console.error('音声認識の停止に失敗:', error)
   }
 }
 </script>
