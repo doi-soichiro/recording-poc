@@ -278,8 +278,40 @@ const stopCareRecording = async () => {
     return
   }
   console.log('録音Blob:', recordedBlob)
-  console.log('音声認識結果:', fullResultText)
+  console.log('音声認識テキスト:', fullResultText)
   // TODO: 保存処理
+  saveRecordedData(recordedBlob as Blob, fullResultText)
+}
+
+// 録音データ、音声認識テキストを保存する処理
+const saveRecordedData = async (recordedBlob: Blob, fullResultText: string) => {
+  const indexedDBStore = useIndexedDBStore()
+  try {
+    // indexedDB接続成功後、トランザクション処理を実行することができる
+    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
+    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
+    // トランザクション処理成功時の処理
+    transaction.oncomplete = () => {
+      console.log('データの登録が成功しました')
+    }
+    // トランザクション処理エラー時の処理
+    transaction.onerror = () => {
+      console.error('データの登録が失敗しました。:', transaction.error)
+    }
+
+    const record = {
+      customerName: '録音ユーザーA', // 任意の名前（不要なら削除可）
+      recordedAt: new Date().toISOString(), // 日時などのメタ情報
+      recordedBlob: recordedBlob, // 録音データ本体
+      recordedText: fullResultText, // 音声認識テキスト
+    }
+
+    // データ登録
+    recordedDataStore.add(record)
+  }
+  catch (err) {
+    console.error('録音データ、音声認識テキストの保存に失敗:', err)
+  }
 }
 </script>
 
