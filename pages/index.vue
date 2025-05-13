@@ -21,7 +21,7 @@
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="startRecording"
+          @click="startRecording2"
         >
           録音開始
         </button>
@@ -29,7 +29,7 @@
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="stopRecording"
+          @click="stopRecording2"
         >
           録音停止
         </button>
@@ -202,6 +202,37 @@ const startRecording = async () => {
     console.error('録音に失敗しました:', err)
   }
 }
+
+const recorderStore = useRecorderStore()
+
+const startRecording2 = async () => {
+  await recorderStore.startRecording()
+}
+
+const stopRecording2 = async () => {
+  const blob = await recorderStore.stopRecording()
+  if (blob) {
+    console.log('録音データあり:', blob)
+    // 再生 or 保存処理などへ
+  }
+}
+
+// const startAll = async () => {
+//   await recorderStore.startRecording()
+//   await speechRecognitionStore.startRecognition()
+// }
+
+// const stopAll = async () => {
+//   recorderStore.stopRecording()
+//   await speechRecognitionStore.stopRecognition()
+
+//   const blob = recorderStore.getRecordedBlob()
+//   console.log('録音データ:', blob)
+//   if (blob) {
+//     // 保存処理 or 再生処理
+//     console.log('録音Blob:', blob)
+//   }
+// }
 
 const speechRecognitionStore = useSpeechRecognitionStore()
 
