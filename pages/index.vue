@@ -17,13 +17,23 @@
     >
       {{ displayMessage }}
     </div>
-    <div class="pt-4 flex items-center justify-center">
-      <button
-        class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-        @click="startRecording"
-      >
-        録音開始
-      </button>
+    <div class="pt-4 flex justify-center space-x-4">
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="startRecording"
+        >
+          録音開始
+        </button>
+      </div>
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="stopRecording"
+        >
+          録音停止
+        </button>
+      </div>
     </div>
     <div class="pt-4 flex justify-center space-x-4">
       <div class="flex items-center justify-center">
