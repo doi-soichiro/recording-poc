@@ -171,7 +171,7 @@ const startRecording = async () => {
       // audio/webm;codecs=opus
       // audio/webm;codecs=pcm
       // audio/webm
-      const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' })
+      const blob = new Blob(chunks, { type: RECORDED_DATA_MIME_TYPE })
       console.log('録音完了:', blob)
 
       // テスト：録音データを再生
@@ -269,7 +269,7 @@ const stopCareRecording = async () => {
   await speechRecognitionStore.stopRecognition()
 
   // 録音データを取得
-  const recordedBlob = recorderStore.getRecordedBlob()
+  const recordedBlob = recorderStore.getRecordedBlob() as Blob
   // 音声認識テキストを取得
   const fullResultText = speechRecognitionStore.getFullResultText()
   // 録音データ、音声認識テキストが取得できなかった場合、処理を終了
@@ -277,10 +277,22 @@ const stopCareRecording = async () => {
     console.log('録音データ、音声認識テキストが取得できませんでした。')
     return
   }
-  console.log('録音Blob:', recordedBlob)
   console.log('音声認識テキスト:', fullResultText)
+
+  // テスト：形式毎の録音データサイズを確認
+  const getRecordedBlob = await recorderStore.getRecordedBlob() as Blob
+  checkSize(getRecordedBlob, RECORDED_DATA_MIME_TYPE)
+
   // TODO: 保存処理
   saveRecordedData(recordedBlob as Blob, fullResultText)
+}
+
+// 録音データのサイズを確認する処理
+const checkSize = async (blob: Blob, type: string) => {
+  console.log('録音データのサイズ確認:', type, '-----------------------------------------------')
+  console.log('サイズ (バイト):', blob.size)
+  console.log('サイズ (KB):', `${(blob.size / 1024).toFixed(2)} KB`)
+  console.log('サイズ (MB):', `${(blob.size / 1024 / 1024).toFixed(2)} MB`)
 }
 
 // 録音データ、音声認識テキストを保存する処理

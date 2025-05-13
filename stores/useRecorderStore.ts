@@ -22,7 +22,7 @@ export const useRecorderStore = defineStore('recorder', () => {
     await initStream()
 
     chunks.value = []
-    recorder.value = new MediaRecorder(stream.value as MediaStream)
+    recorder.value = new MediaRecorder(stream.value as MediaStream, { mimeType: RECORDED_DATA_MIME_TYPE })
 
     recorder.value.ondataavailable = (e: BlobEvent) => {
       if (e.data.size > 0) {
@@ -33,7 +33,7 @@ export const useRecorderStore = defineStore('recorder', () => {
     // 録音停止時の処理
     recorder.value.onstop = () => {
       isRecording.value = false
-      blob.value = new Blob(chunks.value, { type: 'audio/webm;codecs=opus' })
+      blob.value = new Blob(chunks.value, { type: RECORDED_DATA_MIME_TYPE })
       console.log('録音停止 & blob生成')
     }
 
@@ -47,7 +47,7 @@ export const useRecorderStore = defineStore('recorder', () => {
       if (recorder.value && recorder.value.state !== 'inactive') {
         recorder.value.onstop = () => {
           isRecording.value = false
-          blob.value = new Blob(chunks.value, { type: 'audio/webm;codecs=opus' })
+          blob.value = new Blob(chunks.value, { type: RECORDED_DATA_MIME_TYPE })
           console.log('録音停止 & blob生成')
           resolve(blob.value)
         }
@@ -60,9 +60,10 @@ export const useRecorderStore = defineStore('recorder', () => {
     })
   }
 
+  // 録音データの取得処理
   const getRecordedBlob = (): Blob | null => {
     if (!chunks.value.length) return null
-    return new Blob(chunks.value, { type: 'audio/webm;codecs=opus' })
+    return new Blob(chunks.value, { type: RECORDED_DATA_MIME_TYPE })
   }
 
   return {

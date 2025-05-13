@@ -5,6 +5,11 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
   ],
+  imports: {
+    dirs: [
+      'utils/constants/**',
+    ],
+  },
   devtools: { enabled: true },
   compatibilityDate: '2024-11-01',
   eslint: {
