@@ -21,7 +21,7 @@
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="startRecording2"
+          @click="startRecording"
         >
           録音のみ開始
         </button>
@@ -29,7 +29,7 @@
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="stopRecording2"
+          @click="stopRecording"
         >
           録音のみ停止
         </button>
@@ -105,8 +105,6 @@ const displayMessage = ref('')
 // Edgeブラウザの設定URL
 const EDGE_BROWSE_SETTING_URL = 'edge://settings/content/microphone'
 
-let stream: MediaStream | null = null
-
 const requestMicrophonePermission = async () => {
   try {
     // マイク利用許可状態を確認
@@ -132,7 +130,7 @@ const requestMicrophonePermission = async () => {
     }
 
     // TODO: MediaStreamStoreを作成して、streamを再利用するようにする
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    await navigator.mediaDevices.getUserMedia({ audio: true })
   }
   catch (err) {
     // マイク利用許可が得られなかった場合「NotAllowedError: Permission denied」
@@ -158,94 +156,13 @@ const copyToClipboard = async () => {
   }
 }
 
-// 録音処理
-const startRecording = async () => {
-  const indexedDBStore = useIndexedDBStore()
-  try {
-    // const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const recorder = new MediaRecorder(stream as MediaStream)
-    const chunks: Blob[] = []
-
-    // 利用可能なMIMEタイプを確認
-    console.log('audio/webm;codecs=opus:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
-    console.log('audio/webm:', MediaRecorder.isTypeSupported('audio/webm'))
-    console.log('audio/webm;codecs=pcm:', MediaRecorder.isTypeSupported('audio/webm;codecs=pcm'))
-    console.log('audio/ogg:', MediaRecorder.isTypeSupported('audio/ogg'))
-    console.log('audio/mp4:', MediaRecorder.isTypeSupported('audio/mp4'))
-    console.log('audio/mpeg:', MediaRecorder.isTypeSupported('audio/mpeg'))
-    console.log('audio/aac:', MediaRecorder.isTypeSupported('audio/aac'))
-    console.log('audio/wav:', MediaRecorder.isTypeSupported('audio/wav'))
-    console.log('audio/flac:', MediaRecorder.isTypeSupported('audio/flac'))
-    console.log('audio/x-aiff:', MediaRecorder.isTypeSupported('audio/x-aiff'))
-    console.log('audio/vnd.rn-realaudio:', MediaRecorder.isTypeSupported('audio/vnd.rn-realaudio'))
-
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunks.push(event.data)
-      }
-    }
-
-    recorder.onstop = async () => {
-      // audio/webm;codecs=opus
-      // audio/webm;codecs=pcm
-      // audio/webm
-      const blob = new Blob(chunks, { type: RECORDED_DATA_MIME_TYPE })
-      console.log('録音完了:', blob)
-
-      // テスト：録音データを再生
-      // const audioUrl = URL.createObjectURL(blob)
-      // const audio = new Audio(audioUrl)
-      // audio.play()
-
-      // indexedDB接続成功後、トランザクション処理を実行することができる
-      const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
-      const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
-      // トランザクション処理成功時の処理
-      transaction.oncomplete = () => {
-        console.log('データの登録が成功しました')
-      }
-      // トランザクション処理エラー時の処理
-      transaction.onerror = () => {
-        console.error('データの登録が失敗しました。:', transaction.error)
-      }
-
-      const record = {
-        customerName: '録音ユーザーA', // 任意の名前（不要なら削除可）
-        recordedAt: new Date().toISOString(), // 日時などのメタ情報
-        blob: blob, // ここが録音データ本体
-      }
-
-      // データ登録
-      recordedDataStore.add(record)
-
-      // データ取得し、再生する
-      // alert('audio/webmの録音を再生します。')
-      // await recordedDataPlay(6)
-      // alert('audio/webm;codecs=opusの録音を再生します')
-      // await recordedDataPlay(8)
-      // alert('audio/webm;codecs=pcmの録音を再生します')
-      // await recordedDataPlay(15)
-    }
-
-    alert('録音を開始します。')
-    // テスト：録音開始
-    recorder.start()
-    console.log('録音開始')
-    // 5秒後に停止（自動停止の例）
-    setTimeout(() => recorder.stop(), 5000)
-  }
-  catch (err) {
-    console.error('録音に失敗しました:', err)
-  }
-}
-
 const recorderStore = useRecorderStore()
 
-const startRecording2 = async () => {
+const startRecording = async () => {
   await recorderStore.startRecording()
 }
 
-const stopRecording2 = async () => {
+const stopRecording = async () => {
   const blob = await recorderStore.stopRecording()
   if (blob) {
     console.log('録音データあり:', blob)
