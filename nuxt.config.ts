@@ -5,12 +5,25 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
   ],
+  plugins: [
+    '~/plugins/axios.ts',
+  ],
   imports: {
     dirs: [
       'utils/constants/**',
     ],
   },
   devtools: { enabled: true },
+  runtimeConfig: {
+    public: {
+      baseApiUrl: process.env.BASE_API_URL,
+      awsUserPoolsId: process.env.COGNITO_USER_POOL_ID,
+      awsUserPoolsWebClientId: process.env.COGNITO_USER_POOL_CLIENT_ID,
+      applicationCloudFrontUrl: process.env.APPLICATION_CLOUDFRONT_URL,
+      webSocketUrl: process.env.WEB_SOCKET_URL,
+      revisionId: process.env.REVISION_ID,
+    },
+  },
   compatibilityDate: '2024-11-01',
   eslint: {
     config: {
