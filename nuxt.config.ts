@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   ],
   plugins: [
     '~/plugins/axios.ts',
+    { src: '~/plugins/amplify.ts', ssr: false },
   ],
   imports: {
     dirs: [
