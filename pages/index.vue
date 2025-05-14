@@ -74,6 +74,24 @@
     <div class="pt-4 flex items-center justify-center">
       {{ speechRecognitionStore.getFullResultText() }}
     </div>
+    <div class="pt-4 flex justify-center space-x-4">
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click=""
+        >
+          録音・音声認識データ取得
+        </button>
+      </div>
+      <div class="flex items-center justify-center">
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          @click="sendRecordedData"
+        >
+          録音・音声認識データ送信
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
