@@ -261,6 +261,11 @@ const stopSpeechRecognition = async () => {
 const startCareRecording = async () => {
   await recorderStore.startRecording()
   await speechRecognitionStore.startRecognition()
+
+  // 1分後に停止処理を実行
+  // setTimeout(async () => {
+  //   await stopCareRecording()
+  // }, 60 * 1000)
 }
 
 // 録音・音声認識停止処理
