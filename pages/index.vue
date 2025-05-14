@@ -78,17 +78,9 @@
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click=""
+          @click="uploadRecordedZip"
         >
-          録音・音声認識データ取得
-        </button>
-      </div>
-      <div class="flex items-center justify-center">
-        <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="sendRecordedData"
-        >
-          録音・音声認識データ送信
+          録音・音声認識zipをアップロード
         </button>
       </div>
     </div>
@@ -96,6 +88,10 @@
 </template>
 
 <script setup lang="ts">
+import JSZip from 'jszip'
+
+import { getRandomInt } from '~/utils/randomInt'
+
 enum OBJECT_STORE_NAME {
   RECORDED_DATA = 'recorded_data',
 }
@@ -223,8 +219,14 @@ const stopCareRecording = async () => {
   const getRecordedBlob = await recorderStore.getRecordedBlob() as Blob
   checkSize(getRecordedBlob, RECORDED_DATA_MIME_TYPE)
 
-  // TODO: 保存処理
-  saveRecordedData(recordedBlob as Blob, fullResultText)
+  // zip化処理
+  const recordedZipBlob = await createZipFromRecording(recordedBlob, fullResultText)
+  // テスト：zipの中身をログ出力
+  // await inspectZipBlob(zipBlob)
+  // indexedDBにzipを保存
+  saveRecordedZip(recordedZipBlob as Blob)
+
+  // TODO: zipをサーバーにアップロードする処理を実装する
 }
 
 // 録音データのサイズを確認する処理
@@ -235,7 +237,7 @@ const checkSize = async (blob: Blob, type: string) => {
   console.log('サイズ (MB):', `${(blob.size / 1024 / 1024).toFixed(2)} MB`)
 }
 
-// 録音データ、音声認識テキストを保存する処理
+// 録音データ、音声認識テキストをそれぞれindexedDBに保存する処理
 const saveRecordedData = async (recordedBlob: Blob, fullResultText: string) => {
   const indexedDBStore = useIndexedDBStore()
   try {
@@ -263,6 +265,78 @@ const saveRecordedData = async (recordedBlob: Blob, fullResultText: string) => {
   }
   catch (err) {
     console.error('録音データ、音声認識テキストの保存に失敗:', err)
+  }
+}
+
+// zipデータをindexedDBに保存する処理
+const saveRecordedZip = async (recordedZipBlob: Blob) => {
+  const indexedDBStore = useIndexedDBStore()
+  try {
+    // indexedDB接続成功後、トランザクション処理を実行することができる
+    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
+    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
+    // トランザクション処理成功時の処理
+    transaction.oncomplete = () => {
+      console.log('データの登録が成功しました')
+    }
+    // トランザクション処理エラー時の処理
+    transaction.onerror = () => {
+      console.error('データの登録が失敗しました。:', transaction.error)
+    }
+
+    const record = {
+      customerName: '録音ユーザーA', // ユーザ名
+      recordedAt: new Date().toISOString(), // 登録日時
+      recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
+      isUploaded: false, // アップロード済みフラグ
+    }
+
+    // データ登録
+    recordedDataStore.add(record)
+  }
+  catch (err) {
+    console.error('録音データ、音声認識テキストの保存に失敗:', err)
+  }
+}
+
+// zip化処理
+const createZipFromRecording = async (audioBlob: Blob, fullResultText: string): Promise<Blob> => {
+  const zip = new JSZip()
+
+  // minutes_idを想定した値を取得
+  const minutesId = `minutes${getRandomInt(10000, 99999)}`
+
+  // 録音ファイルを追加
+  zip.file(`${minutesId}.webm`, audioBlob)
+  // 音声認識ファイルを追加
+  zip.file(`${minutesId}.txt`, fullResultText)
+
+  // zipをBlobで出力
+  const zipBlob = await zip.generateAsync({ type: 'blob' })
+  return zipBlob
+}
+
+// zipの中身をログ出力する処理
+const inspectZipBlob = async (zipBlob: Blob) => {
+  const zip = await JSZip.loadAsync(zipBlob)
+
+  console.log('ZIP内のファイル一覧:')
+  for (const filename of Object.keys(zip.files)) {
+    console.log(`- ${filename}`)
+
+    const file = zip.files[filename]
+
+    if (filename.endsWith('.txt')) {
+      const content = await file.async('string')
+      console.log(`${filename} の内容:`)
+      console.log(content)
+    }
+
+    if (filename.endsWith('.webm')) {
+      const blob = await file.async('blob')
+      console.log(`${filename} のサイズ: ${blob.size} bytes`)
+      console.log(`Blobの中身:`, blob)
+    }
   }
 }
 </script>
