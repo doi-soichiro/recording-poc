@@ -89,17 +89,24 @@
 
 <script setup lang="ts">
 import JSZip from 'jszip'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+import { v4 as uuidv4 } from 'uuid'
 
-import { getRandomInt } from '~/utils/randomInt'
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 enum OBJECT_STORE_NAME {
   RECORDED_DATA = 'recorded_data',
 }
 
-// 録音許可処理
-const displayMessage = ref('')
 // Edgeブラウザの設定URL
 const EDGE_BROWSE_SETTING_URL = 'edge://settings/content/microphone'
+// 録音許可処理
+const displayMessage = ref('')
+const careStartAt = ref('') // 施術開始日時
+const careEndAt = ref('') // 施術終了日時
 
 const requestMicrophonePermission = async () => {
   try {
@@ -190,6 +197,7 @@ const stopSpeechRecognition = async () => {
 
 // 録音・音声認識開始処理
 const startCareRecording = async () => {
+  careStartAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
   await recorderStore.startRecording()
   await speechRecognitionStore.startRecognition()
 
@@ -203,6 +211,7 @@ const startCareRecording = async () => {
 const stopCareRecording = async () => {
   await recorderStore.stopRecording()
   await speechRecognitionStore.stopRecognition()
+  careEndAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
 
   // 録音データを取得
   const recordedBlob = recorderStore.getRecordedBlob() as Blob
@@ -219,12 +228,15 @@ const stopCareRecording = async () => {
   const getRecordedBlob = await recorderStore.getRecordedBlob() as Blob
   checkSize(getRecordedBlob, RECORDED_DATA_MIME_TYPE)
 
+  // 議事録IDを取得
+  const minutesId = `minutes_${uuidv4().replace(/-/g, '')}`
+
   // zip化処理
-  const recordedZipBlob = await createZipFromRecording(recordedBlob, fullResultText)
+  const recordedZipBlob = await createZipFromRecording(minutesId, recordedBlob, fullResultText)
   // テスト：zipの中身をログ出力
-  // await inspectZipBlob(zipBlob)
+  await inspectZipBlob(recordedZipBlob)
   // indexedDBにzipを保存
-  saveRecordedZip(recordedZipBlob as Blob)
+  saveRecordedZip(minutesId, recordedZipBlob as Blob)
 
   // TODO: zipをサーバーにアップロードする処理を実装する
 }
@@ -237,74 +249,9 @@ const checkSize = async (blob: Blob, type: string) => {
   console.log('サイズ (MB):', `${(blob.size / 1024 / 1024).toFixed(2)} MB`)
 }
 
-// 録音データ、音声認識テキストをそれぞれindexedDBに保存する処理
-const saveRecordedData = async (recordedBlob: Blob, fullResultText: string) => {
-  const indexedDBStore = useIndexedDBStore()
-  try {
-    // indexedDB接続成功後、トランザクション処理を実行することができる
-    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
-    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
-    // トランザクション処理成功時の処理
-    transaction.oncomplete = () => {
-      console.log('データの登録が成功しました')
-    }
-    // トランザクション処理エラー時の処理
-    transaction.onerror = () => {
-      console.error('データの登録が失敗しました。:', transaction.error)
-    }
-
-    const record = {
-      customerName: '録音ユーザーA', // 任意の名前（不要なら削除可）
-      recordedAt: new Date().toISOString(), // 日時などのメタ情報
-      recordedBlob: recordedBlob, // 録音データ本体
-      recordedText: fullResultText, // 音声認識テキスト
-    }
-
-    // データ登録
-    recordedDataStore.add(record)
-  }
-  catch (err) {
-    console.error('録音データ、音声認識テキストの保存に失敗:', err)
-  }
-}
-
-// zipデータをindexedDBに保存する処理
-const saveRecordedZip = async (recordedZipBlob: Blob) => {
-  const indexedDBStore = useIndexedDBStore()
-  try {
-    // indexedDB接続成功後、トランザクション処理を実行することができる
-    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
-    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
-    // トランザクション処理成功時の処理
-    transaction.oncomplete = () => {
-      console.log('データの登録が成功しました')
-    }
-    // トランザクション処理エラー時の処理
-    transaction.onerror = () => {
-      console.error('データの登録が失敗しました。:', transaction.error)
-    }
-
-    const record = {
-      customerName: '録音ユーザーA', // ユーザ名
-      recordedAt: new Date().toISOString(), // 登録日時
-      recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
-      isUploaded: false, // アップロード済みフラグ
-    }
-
-    // データ登録
-    recordedDataStore.add(record)
-  }
-  catch (err) {
-    console.error('録音データ、音声認識テキストの保存に失敗:', err)
-  }
-}
-
 // zip化処理
-const createZipFromRecording = async (audioBlob: Blob, fullResultText: string): Promise<Blob> => {
+const createZipFromRecording = async (minutesId: string, audioBlob: Blob, fullResultText: string): Promise<Blob> => {
   const zip = new JSZip()
-
-  // minutes_idを想定した値を取得
-  const minutesId = `minutes${getRandomInt(10000, 99999)}`
 
   // 録音ファイルを追加
   zip.file(`${minutesId}.webm`, audioBlob)
@@ -337,6 +284,41 @@ const inspectZipBlob = async (zipBlob: Blob) => {
       console.log(`${filename} のサイズ: ${blob.size} bytes`)
       console.log(`Blobの中身:`, blob)
     }
+  }
+}
+
+// zipデータをindexedDBに保存する処理
+const saveRecordedZip = async (minutesId: string, recordedZipBlob: Blob) => {
+  const indexedDBStore = useIndexedDBStore()
+  try {
+    // indexedDB接続成功後、トランザクション処理を実行することができる
+    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
+    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
+    // トランザクション処理成功時の処理
+    transaction.oncomplete = () => {
+      console.log('データの保存が成功しました')
+    }
+    // トランザクション処理エラー時の処理
+    transaction.onerror = () => {
+      console.error('データの保存が失敗しました。:', transaction.error)
+    }
+    // カラム情報を設定
+    const record = {
+      minutesId: minutesId, // 議事録ID
+      careStartAt: careStartAt.value, // 施術開始日時
+      careEndAt: careEndAt.value, // 施術終了日時
+      companyId: 'company01', // 会社ID
+      storeId: 'store01', // 店舗ID
+      storeStaffId: 'staff01', // 店舗スタッフID
+      customerId: 'customer01', // お客様ID
+      recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
+      isUploaded: false, // アップロード成功フラグ
+    }
+    // データ登録
+    recordedDataStore.add(record)
+  }
+  catch (err) {
+    console.error('録音データ、音声認識テキストの保存に失敗:', err)
   }
 }
 </script>

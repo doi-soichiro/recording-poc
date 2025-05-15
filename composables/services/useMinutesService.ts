@@ -1,10 +1,28 @@
 import type { AxiosResponse } from 'axios'
+import type { PostMinutesResponse } from '~/interfaces/api/minutes/response/PostMinutesResponse'
+import type { PostMinutesRequest } from '~/interfaces/api/minutes/request/PostMinutesRequest'
 import type { GetminutesSignUrlResponse } from '~/interfaces/api/minutes/response/GetminutesSignUrlResponse'
 import type { GetminutesSignUrlRequest } from '~/interfaces/api/minutes/request/GetminutesSignUrlRequest'
 import type { PutRecordingZipRequest } from '~/interfaces/api/minutes/request/PutRecordingZipRequest'
 
 export const useMinutesService = () => {
   const { $axios } = useNuxtApp()
+
+  // 議事録情報登録処理
+  const postMinutes = async (params: PostMinutesRequest): Promise<string> => {
+    try {
+      const headers = await prepareHeaders({ useAuth: true })
+      const response: AxiosResponse<PostMinutesResponse> = await $axios.post(`/minutes`, params, { headers })
+      const minutesId = response.data.minutesId
+      return `議事録情報を送信しました（minutesId=${minutesId}）`
+    }
+    catch (error) {
+      console.log('議事録情報登録処理でエラーが発生しました：', error)
+      // const errorMsg = useCreateApiErrorMessage(error, '議事録情報登録処理')
+      const errorMsg = '議事録情報登録処理でエラーが発生しました'
+      throw errorMsg
+    }
+  }
 
   // 録音・音声認識データを格納したzipのアップロード処理
   const uploadRecordingZip = async (request: GetminutesSignUrlRequest, file: File): Promise<void> => {
@@ -37,6 +55,8 @@ export const useMinutesService = () => {
   }
 
   return {
+    postMinutes,
     uploadRecordingZip,
+    uploadFile,
   }
 }
