@@ -1,3 +1,4 @@
 export interface GetminutesSignUrlResponse {
+  message: string
   uploadUrl: string
 }
