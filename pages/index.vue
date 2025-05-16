@@ -93,6 +93,9 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { v4 as uuidv4 } from 'uuid'
+import { useMinutesService } from '~/composables/services/useMinutesService'
+import type { PostMinutesRequest } from '~/interfaces/api/minutes/request/PostMinutesRequest'
+import type { MinutesDetail, MinutesDetailWithZip } from '~/interfaces/domain/minutes/MinutesDetail'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -101,12 +104,15 @@ enum OBJECT_STORE_NAME {
   RECORDED_DATA = 'recorded_data',
 }
 
+const { postMinutes, getMinutesSignUrl, uploadFile } = useMinutesService()
+
 // Edgeブラウザの設定URL
 const EDGE_BROWSE_SETTING_URL = 'edge://settings/content/microphone'
 // 録音許可処理
 const displayMessage = ref('')
-const careStartAt = ref('') // 施術開始日時
-const careEndAt = ref('') // 施術終了日時
+const minutesTitle = ref('') // 議事録タイトル
+const startTreatmentAt = ref('') // 施術開始日時
+const endTreatmentAt = ref('') // 施術終了日時
 
 const requestMicrophonePermission = async () => {
   try {
@@ -197,7 +203,8 @@ const stopSpeechRecognition = async () => {
 
 // 録音・音声認識開始処理
 const startCareRecording = async () => {
-  careStartAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
+  minutesTitle.value = dayjs().tz('Asia/Tokyo').format('YYYY年MM月DD日 THH時mm分')
+  startTreatmentAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
   await recorderStore.startRecording()
   await speechRecognitionStore.startRecognition()
 
@@ -211,7 +218,7 @@ const startCareRecording = async () => {
 const stopCareRecording = async () => {
   await recorderStore.stopRecording()
   await speechRecognitionStore.stopRecognition()
-  careEndAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
+  endTreatmentAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
 
   // 録音データを取得
   const recordedBlob = recorderStore.getRecordedBlob() as Blob
@@ -237,8 +244,12 @@ const stopCareRecording = async () => {
   await inspectZipBlob(recordedZipBlob)
   // indexedDBにzipを保存
   saveRecordedZip(minutesId, recordedZipBlob as Blob)
-
-  // TODO: zipをサーバーにアップロードする処理を実装する
+  // 議事録情報の登録処理
+  await registerMinutesData(minutesId)
+  // ファイルアップロード用のURLを取得
+  const uploadUrl = await getMinutesSignUrl(minutesId)
+  // zipをサーバにアップロード
+  await uploadRecordedZip(uploadUrl, recordedZipBlob)
 }
 
 // 録音データのサイズを確認する処理
@@ -302,23 +313,72 @@ const saveRecordedZip = async (minutesId: string, recordedZipBlob: Blob) => {
     transaction.onerror = () => {
       console.error('データの保存が失敗しました。:', transaction.error)
     }
-    // カラム情報を設定
-    const record = {
-      minutesId: minutesId, // 議事録ID
-      careStartAt: careStartAt.value, // 施術開始日時
-      careEndAt: careEndAt.value, // 施術終了日時
-      companyId: 'company01', // 会社ID
-      storeId: 'store01', // 店舗ID
-      storeStaffId: 'staff01', // 店舗スタッフID
-      customerId: 'customer01', // お客様ID
-      recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
-      isUploaded: false, // アップロード成功フラグ
-    }
     // データ登録
-    recordedDataStore.add(record)
+    recordedDataStore.add(
+      {
+        minutesId: minutesId, // 議事録ID
+        title: minutesTitle.value, // 議事録タイトル
+        companyId: 'company01', // 会社ID
+        storeId: 'store01', // 店舗ID
+        staffId: 'staff01', // 店舗スタッフID
+        // customerId: 'customer01', // お客様ID
+        startTreatmentAt: startTreatmentAt.value, // 施術開始日時
+        endTreatmentAt: endTreatmentAt.value, // 施術終了日時
+        recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
+        createdBy: 'staff01', // 作成者
+        updatedBy: 'staff01', // 更新者
+        isUploaded: false, // アップロード成功フラグ
+      } as MinutesDetailWithZip,
+    )
   }
   catch (err) {
     console.error('録音データ、音声認識テキストの保存に失敗:', err)
+  }
+}
+
+// 議事録情報の登録処理
+const registerMinutesData = async (minutesId: string) => {
+  try {
+    // 議事録情報登録処理
+    const responseMessage = await postMinutes(
+      {
+        minutesId: minutesId, // 議事録ID
+        title: minutesTitle.value, // 議事録タイトル
+        companyId: 'company01', // 会社ID
+        storeId: 'store01', // 店舗ID
+        staffId: 'staff01', // 店舗スタッフID
+        // customerId: 'customer01', // お客様ID
+        startTreatmentAt: startTreatmentAt.value, // 施術開始日時
+        endTreatmentAt: endTreatmentAt.value, // 施術終了日時
+        createdBy: 'staff01', // 作成者
+        updatedBy: 'staff01', // 更新者
+      } as MinutesDetail,
+    )
+    console.log(responseMessage)
+  }
+  catch (error) {
+    console.error(error)
+  }
+}
+
+// zipのサーバアップロード処理
+const uploadRecordedZip = async (uploadUrl: string, recordedZipBlob: Blob) => {
+  const formData = new FormData()
+  const minutesId = `minutes_${uuidv4().replace(/-/g, '')}`
+  formData.append('file', recordedZipBlob, `${minutesId}.zip`)
+
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    if (!response.ok) {
+      throw new Error('アップロードに失敗しました。')
+    }
+    console.log('アップロード成功:', await response.json())
+  }
+  catch (error) {
+    console.error('アップロードエラー:', error)
   }
 }
 </script>
