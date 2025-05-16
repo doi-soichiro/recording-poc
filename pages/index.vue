@@ -245,11 +245,10 @@ const stopCareRecording = async () => {
   // indexedDBにzipを保存
   saveRecordedZip(minutesId, recordedZipBlob as Blob)
   // 議事録情報の登録処理
-  await registerMinutesData(minutesId)
-  // alert('録音データ、音声認識テキストをzip化して保存しました。ファイルアップロード用のURLを取得します。')
+  await registerMinutes(minutesId)
   // ファイルアップロード用のURLを取得
-  // const uploadUrl = await getMinutesSignUrl(minutesId)
-  // alert(`アップロードURL:${uploadUrl}`)
+  const uploadUrl = await getMinutesSignUrl(minutesId)
+  alert(`アップロードURL:${uploadUrl}`)
   // zipをサーバにアップロード
   // await uploadRecordedZip(uploadUrl, recordedZipBlob)
 }
@@ -346,16 +345,27 @@ const registerMinutesData = async (minutesId: string) => {
       {
         minutesId: minutesId, // 議事録ID
         title: minutesTitle.value, // 議事録タイトル
-        companyId: 'company01', // 会社ID
-        storeId: 'store01', // 店舗ID
-        staffId: 'staff01', // 店舗スタッフID
+        companyId: 'company001', // 会社ID
+        storeId: 'store001', // 店舗ID
+        staffId: 'ss475226179f', // 店舗スタッフID
         // customerId: 'customer01', // お客様ID
         startTreatmentAt: startTreatmentAt.value, // 施術開始日時
         endTreatmentAt: endTreatmentAt.value, // 施術終了日時
-        createdBy: 'staff01', // 作成者
-        updatedBy: 'staff01', // 更新者
+        createdBy: 'ss475226179f', // 作成者
+        updatedBy: 'ss475226179f', // 更新者
       } as MinutesDetail,
     )
+    console.log(responseMessage)
+  }
+  catch (error) {
+    console.error(error)
+  }
+}
+
+// 議事録情報登録処理
+const registerMinutes = async (minutesId: string) => {
+  try {
+    const responseMessage = await registerMinutesData(minutesId)
     console.log(responseMessage)
   }
   catch (error) {
