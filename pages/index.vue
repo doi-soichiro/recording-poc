@@ -246,10 +246,12 @@ const stopCareRecording = async () => {
   saveRecordedZip(minutesId, recordedZipBlob as Blob)
   // 議事録情報の登録処理
   await registerMinutesData(minutesId)
+  // alert('録音データ、音声認識テキストをzip化して保存しました。ファイルアップロード用のURLを取得します。')
   // ファイルアップロード用のURLを取得
-  const uploadUrl = await getMinutesSignUrl(minutesId)
+  // const uploadUrl = await getMinutesSignUrl(minutesId)
+  // alert(`アップロードURL:${uploadUrl}`)
   // zipをサーバにアップロード
-  await uploadRecordedZip(uploadUrl, recordedZipBlob)
+  // await uploadRecordedZip(uploadUrl, recordedZipBlob)
 }
 
 // 録音データのサイズを確認する処理

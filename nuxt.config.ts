@@ -9,10 +9,11 @@ export default defineNuxtConfig({
     '~/plugins/axios.ts',
     { src: '~/plugins/amplify.ts', ssr: false },
   ],
+  ssr: false,
   imports: {
     dirs: [
-      'utils/constants/**',
-    ],
+      'composables/**',
+      'utils/constants/**'],
   },
   devtools: { enabled: true },
   runtimeConfig: {
