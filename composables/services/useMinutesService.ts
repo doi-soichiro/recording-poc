@@ -2,7 +2,6 @@ import type { AxiosResponse } from 'axios'
 import type { PostMinutesResponse } from '~/interfaces/api/minutes/response/PostMinutesResponse'
 import type { PostMinutesRequest } from '~/interfaces/api/minutes/request/PostMinutesRequest'
 import type { GetminutesSignUrlResponse } from '~/interfaces/api/minutes/response/GetminutesSignUrlResponse'
-import type { GetminutesSignUrlRequest } from '~/interfaces/api/minutes/request/GetminutesSignUrlRequest'
 
 export const useMinutesService = () => {
   const { $axios } = useNuxtApp()
@@ -23,12 +22,11 @@ export const useMinutesService = () => {
     }
   }
 
-  // 録音・音声認識データを格納したzipのアップロード処理
-  const getMinutesSignUrl = async (request: GetminutesSignUrlRequest): Promise<string> => {
-    const { id, extension } = request
+  // ファイルアップロード用署名付きURL取得処理
+  const getMinutesSignUrl = async (minutesId: string): Promise<string> => {
     try {
       const headers = await prepareHeaders({ useAuth: true })
-      const response: AxiosResponse<GetminutesSignUrlResponse> = await $axios.get(`/minutes/${id}/sign-url`, { params: { extension }, headers })
+      const response: AxiosResponse<GetminutesSignUrlResponse> = await $axios.get(`/minutes/upload-url/${minutesId}`, { headers })
       const uploadUrl = response.data.uploadUrl
       return uploadUrl
     }
@@ -40,7 +38,7 @@ export const useMinutesService = () => {
     }
   }
 
-  // ファイルアップロード処理
+  // 録音・音声認識データを格納したzipファイルのアップロード処理
   const uploadFile = async (uploadUrl: string, file: File): Promise<void> => {
     try {
       const contentType = file.type
