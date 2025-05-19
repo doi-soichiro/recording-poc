@@ -3,18 +3,21 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 // 音声認識処理を管理するストア
+// NOTE: 当ストアで利用する型定義は、~/types/speech-recognition.d.tsにする
 export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', () => {
   const speechRecognitionStatus = ref('未開始')
   const fullResultText = ref('') // 音声認識結果テキスト（全文）
   const interimText = ref('') // 音声認識中間結果テキスト
 
-  let speechRecognizer: any = null // 音声認識インスタンス
+  let speechRecognizer: SpeechRecognition | null = null // 音声認識インスタンス
   let isSpeaking = false // 音声認識中フラグ
   let shouldContinueRecognition = true // 音声認識の継続制御フラグ
 
   // インスタンス作成
-  const createSpeechRecognizerInstance = (): any => {
-    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  const createSpeechRecognizerInstance = (): SpeechRecognition => {
+    const SpeechRecognitionClass = (
+      window.SpeechRecognition ?? window.webkitSpeechRecognition
+    ) as new () => SpeechRecognition
     const recognizer = new SpeechRecognitionClass()
 
     recognizer.lang = 'ja-JP'
@@ -35,7 +38,7 @@ export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', (
       if (!isSpeaking) continueRecognition()
     }
 
-    recognizer.onresult = (event: any) => {
+    recognizer.onresult = (event: SpeechRecognitionEvent) => {
       const results = event.results
       for (let i = event.resultIndex; i < results.length; i++) {
         const text = results[i][0].transcript
@@ -62,7 +65,7 @@ export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', (
     if (speechRecognizer) speechRecognizer.abort()
     speechRecognizer = createSpeechRecognizerInstance()
     speechRecognitionStatus.value = '起動中'
-    speechRecognizer.start()
+    if (speechRecognizer) speechRecognizer.start()
     console.log('音声認識開始')
   }
 
@@ -98,7 +101,7 @@ export const useSpeechRecognitionStore = defineStore('speechRecognitionStore', (
       speechRecognizer.abort()
     }
     speechRecognizer = createSpeechRecognizerInstance()
-    speechRecognizer.start()
+    if (speechRecognizer) speechRecognizer.start()
   }
 
   // 音声認識結果テキストの取得
