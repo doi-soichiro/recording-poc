@@ -128,15 +128,11 @@ const requestMicrophonePermission = async () => {
                       + 'edge://settings/content/microphone'
         break
     }
-
     // TODO: MediaStreamStoreを作成して、streamを再利用するようにする
     await navigator.mediaDevices.getUserMedia({ audio: true })
   }
   catch (err) {
-    // マイク利用許可が得られなかった場合「NotAllowedError: Permission denied」
-    if (err.name === 'NotAllowedError') {
-      console.error('マイク利用が拒否されました。', err)
-    }
+    console.error('マイク利用が拒否されました。', err)
   }
 }
 
