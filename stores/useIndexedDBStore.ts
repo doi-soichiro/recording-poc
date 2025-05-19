@@ -5,7 +5,7 @@ enum OBJECT_STORE_NAME {
 }
 
 export const useIndexedDBStore = defineStore('indexedDBStore', () => {
-  const request = indexedDB.open('careDatabase', 1)
+  const request = indexedDB.open('careDatabase', 1) // オブジェクトストア構造を更新する場合、バージョンの数値を上げていく(小数は非対応)
   let db: IDBDatabase | null = null
 
   // データベース情報の初期化
@@ -15,8 +15,12 @@ export const useIndexedDBStore = defineStore('indexedDBStore', () => {
     request.onupgradeneeded = () => {
       console.log('onupgradeneeded')
       const db = request.result
+      // 旧オブジェクトストアが存在する場合は削除（全データが削除される）
+      if (db.objectStoreNames.contains('recorded_data')) {
+        db.deleteObjectStore('recorded_data')
+      }
       // 録音データのオブジェクトストアを作成
-      db.createObjectStore(OBJECT_STORE_NAME.RECORDED_DATA, { keyPath: 'id', autoIncrement: true })
+      db.createObjectStore(OBJECT_STORE_NAME.RECORDED_DATA, { keyPath: 'minutesId' })
     }
 
     db = await new Promise((resolve, reject) => {

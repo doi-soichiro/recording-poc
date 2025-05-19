@@ -3,10 +3,11 @@ import type { PostMinutesResponse } from '~/interfaces/api/minutes/response/Post
 import type { PostMinutesRequest } from '~/interfaces/api/minutes/request/PostMinutesRequest'
 import type { GetminutesSignUrlResponse } from '~/interfaces/api/minutes/response/GetminutesSignUrlResponse'
 
+// 議事録作成サービス（1～3を順番に呼び出す）
 export const useMinutesService = () => {
   const { $axios } = useNuxtApp()
 
-  // 議事録情報登録処理
+  // １．議事録情報登録処理
   const postMinutes = async (params: PostMinutesRequest): Promise<string> => {
     try {
       const headers = await prepareHeaders({ useAuth: true })
@@ -22,7 +23,7 @@ export const useMinutesService = () => {
     }
   }
 
-  // ファイルアップロード用署名付きURL取得処理
+  // ２．ファイルアップロード用署名付きURL取得処理
   const getMinutesSignUrl = async (minutesId: string): Promise<string> => {
     try {
       const headers = await prepareHeaders({ useAuth: true })
@@ -38,12 +39,13 @@ export const useMinutesService = () => {
     }
   }
 
-  // 録音・音声認識データを格納したzipファイルのアップロード処理
-  const uploadFile = async (uploadUrl: string, file: File): Promise<void> => {
+  // ３．録音・音声認識データを格納したzipファイルのアップロード処理
+  const uploadFile = async (uploadUrl: string, file: File): Promise<string> => {
     try {
       const contentType = file.type
       const headers = { 'Content-Type': contentType }
       await $axios.put(uploadUrl, file, { headers })
+      return 'ファイルアップロード処理が完了しました'
     }
     catch (error) {
       console.log('ファイルアップロード処理でエラーが発生しました：', error)

@@ -20,7 +20,7 @@
     <div class="pt-4 flex justify-center space-x-4">
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="startRecording"
         >
           録音のみ開始
@@ -28,7 +28,7 @@
       </div>
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="stopRecording"
         >
           録音のみ停止
@@ -38,7 +38,7 @@
     <div class="pt-4 flex justify-center space-x-4">
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="startSpeechRecognition"
         >
           音声認識のみ開始
@@ -46,7 +46,7 @@
       </div>
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="stopSpeechRecognition"
         >
           音声認識のみ停止
@@ -62,27 +62,19 @@
           録音・音声認識開始
         </button>
       </div>
-      <div class="flex items-center justify-center">
-        <button
-          class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="stopCareRecording"
-        >
-          録音・音声認識停止
-        </button>
-      </div>
-    </div>
-    <div class="pt-4 flex items-center justify-center">
-      {{ speechRecognitionStore.getFullResultText() }}
     </div>
     <div class="pt-4 flex justify-center space-x-4">
       <div class="flex items-center justify-center">
         <button
           class="px-4 py-2 bg-blue-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
-          @click="uploadRecordedZip"
+          @click="stopCareRecording"
         >
-          録音・音声認識zipをアップロード
+          録音・音声認識完了し、zipをアップロード
         </button>
       </div>
+    </div>
+    <div class="pt-4 flex items-center justify-center">
+      {{ speechRecognitionStore.getFullResultText() }}
     </div>
   </div>
 </template>
@@ -94,7 +86,6 @@ import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { v4 as uuidv4 } from 'uuid'
 import { useMinutesService } from '~/composables/services/useMinutesService'
-import type { PostMinutesRequest } from '~/interfaces/api/minutes/request/PostMinutesRequest'
 import type { MinutesDetail, MinutesDetailWithZip } from '~/interfaces/domain/minutes/MinutesDetail'
 
 dayjs.extend(utc)
@@ -248,9 +239,12 @@ const stopCareRecording = async () => {
   await registerMinutes(minutesId)
   // ファイルアップロード用のURLを取得
   const uploadUrl = await getMinutesSignUrl(minutesId)
-  alert(`アップロードURL:${uploadUrl}`)
+  // alert(`アップロードURL:${uploadUrl}`)
   // zipをサーバにアップロード
-  // await uploadRecordedZip(uploadUrl, recordedZipBlob)
+  await uploadRecordedZip(uploadUrl, recordedZipBlob)
+  // アップロード済みのzipをindexedDBから削除
+  // alert(`indexedDBから${minutesId}を削除します`)
+  await deleteRecordedZip(minutesId)
 }
 
 // 録音データのサイズを確認する処理
@@ -319,15 +313,15 @@ const saveRecordedZip = async (minutesId: string, recordedZipBlob: Blob) => {
       {
         minutesId: minutesId, // 議事録ID
         title: minutesTitle.value, // 議事録タイトル
-        companyId: 'company01', // 会社ID
-        storeId: 'store01', // 店舗ID
-        staffId: 'staff01', // 店舗スタッフID
+        companyId: 'company001', // 会社ID
+        storeId: 'store001', // 店舗ID
+        staffId: 'ss475226179f', // 店舗スタッフID
         // customerId: 'customer01', // お客様ID
         startTreatmentAt: startTreatmentAt.value, // 施術開始日時
         endTreatmentAt: endTreatmentAt.value, // 施術終了日時
         recordedZipBlob: recordedZipBlob, // 録音・音声認識を格納したzip本体
-        createdBy: 'staff01', // 作成者
-        updatedBy: 'staff01', // 更新者
+        createdBy: 'ss475226179f', // 作成者
+        updatedBy: 'ss475226179f', // 更新者
         isUploaded: false, // アップロード成功フラグ
       } as MinutesDetailWithZip,
     )
@@ -338,7 +332,7 @@ const saveRecordedZip = async (minutesId: string, recordedZipBlob: Blob) => {
 }
 
 // 議事録情報の登録処理
-const registerMinutesData = async (minutesId: string) => {
+const registerMinutes = async (minutesId: string) => {
   try {
     // 議事録情報登録処理
     const responseMessage = await postMinutes(
@@ -362,35 +356,44 @@ const registerMinutesData = async (minutesId: string) => {
   }
 }
 
-// 議事録情報登録処理
-const registerMinutes = async (minutesId: string) => {
-  try {
-    const responseMessage = await registerMinutesData(minutesId)
-    console.log(responseMessage)
-  }
-  catch (error) {
-    console.error(error)
-  }
-}
-
 // zipのサーバアップロード処理
 const uploadRecordedZip = async (uploadUrl: string, recordedZipBlob: Blob) => {
-  const formData = new FormData()
-  const minutesId = `minutes_${uuidv4().replace(/-/g, '')}`
-  formData.append('file', recordedZipBlob, `${minutesId}.zip`)
+  // アップロードファイル
+  const FILE_NAME = 'minutes_rec.zip'
+  const file = new File([recordedZipBlob], FILE_NAME, { type: recordedZipBlob.type || 'application/zip' })
 
   try {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    })
-    if (!response.ok) {
-      throw new Error('アップロードに失敗しました。')
-    }
-    console.log('アップロード成功:', await response.json())
+    const response = await uploadFile(
+      uploadUrl,
+      file,
+    )
+    console.log('アップロード成功:', await response)
   }
   catch (error) {
     console.error('アップロードエラー:', error)
+  }
+}
+
+// アップロード済みのzipをindexedDBから削除する処理
+const deleteRecordedZip = async (minutesId: string) => {
+  const indexedDBStore = useIndexedDBStore()
+  try {
+    // indexedDB接続成功後、トランザクション処理を実行することができる
+    const transaction = indexedDBStore.getDB().transaction(OBJECT_STORE_NAME.RECORDED_DATA, 'readwrite')
+    const recordedDataStore = transaction.objectStore(OBJECT_STORE_NAME.RECORDED_DATA)
+    // トランザクション処理成功時の処理
+    transaction.oncomplete = () => {
+      console.log('データの削除が成功しました')
+    }
+    // トランザクション処理エラー時の処理
+    transaction.onerror = () => {
+      console.error('データの削除が失敗しました。:', transaction.error)
+    }
+    // データ削除
+    recordedDataStore.delete(minutesId)
+  }
+  catch (err) {
+    console.error('録音データ、音声認識テキストの削除に失敗:', err)
   }
 }
 </script>
