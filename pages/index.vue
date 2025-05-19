@@ -194,7 +194,7 @@ const stopSpeechRecognition = async () => {
 
 // 録音・音声認識開始処理
 const startCareRecording = async () => {
-  minutesTitle.value = dayjs().tz('Asia/Tokyo').format('YYYY年MM月DD日 THH時mm分')
+  minutesTitle.value = dayjs().tz('Asia/Tokyo').format('YYYY年MM月DD日 HH時mm分')
   startTreatmentAt.value = dayjs().tz('Asia/Tokyo').format('YYYY-MM-DDTHH:mm:ssZ')
   await recorderStore.startRecording()
   await speechRecognitionStore.startRecognition()
