@@ -42,7 +42,7 @@ export const useRecorderStore = defineStore('recorder', () => {
     console.log('録音開始')
   }
 
-  const stopRecording = (): Promise<Blob | null> => {
+  const stopRecording = async (): Promise<Blob | null> => {
     return new Promise((resolve) => {
       if (recorder.value && recorder.value.state !== 'inactive') {
         recorder.value.onstop = () => {

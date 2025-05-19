@@ -20,7 +20,7 @@
     <div class="pt-4 flex justify-center space-x-4">
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-green-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="startRecording"
         >
           録音のみ開始
@@ -28,11 +28,39 @@
       </div>
       <div class="flex items-center justify-center">
         <button
-          class="px-4 py-2 bg-blue-300 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+          class="px-4 py-2 bg-green-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
           @click="stopRecording"
         >
           録音のみ停止
         </button>
+      </div>
+    </div>
+    <!-- audioタグを用いた再生処理 -->
+    <div class="flex justify-center space-x-4">
+      <div class="pt-4 w-[700px] flex flex-col bg-green-200">
+        <div class="flex items-center justify-center">
+          audioタグを用いた再生処理
+        </div>
+        <div class="flex justify-center space-x-4">
+          <div class="flex items-center justify-center">
+            <audio
+              :src="testRecordedBlob"
+              controls
+              class="px-4 py-2 bg-green-600 text-white rounded-md shadow active:bg-blue-700 transition-colors duration-200"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ライブラリ無しでUI自作する再生処理 -->
+    <div class="flex justify-center space-x-4">
+      <div class="pt-4 w-[700px] flex flex-col bg-blue-200">
+        <div class="flex items-center justify-center">
+          HTMLAudioElementを用いた再生処理
+        </div>
+        <div class="flex justify-center space-x-4">
+          <AudioSet :recorded-blob="testRecordedBlob" />
+        </div>
       </div>
     </div>
     <div class="pt-4 flex justify-center space-x-4">
@@ -87,6 +115,7 @@ import timezone from 'dayjs/plugin/timezone'
 import { v4 as uuidv4 } from 'uuid'
 import { useMinutesService } from '~/composables/services/useMinutesService'
 import type { MinutesDetail, MinutesDetailWithZip } from '~/interfaces/domain/minutes/MinutesDetail'
+import AudioSet from '~/components/atoms/Audio/AudioSet.vue'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -101,6 +130,8 @@ const { postMinutes, getMinutesSignUrl, uploadFile } = useMinutesService()
 const EDGE_BROWSE_SETTING_URL = 'edge://settings/content/microphone'
 // 録音許可処理
 const displayMessage = ref('')
+// 再生テスト用録音データ
+const testRecordedBlob = ref('')
 const minutesTitle = ref('') // 議事録タイトル
 const startTreatmentAt = ref('') // 施術開始日時
 const endTreatmentAt = ref('') // 施術終了日時
@@ -160,7 +191,12 @@ const startRecording = async () => {
 
 const stopRecording = async () => {
   const blob = await recorderStore.stopRecording()
+  console.log('🎧 blob size:', blob?.size)
+  console.log('🎧 blob type:', blob?.type)
   if (blob) {
+    testRecordedBlob.value = URL.createObjectURL(blob)
+    console.log('🎧 blob URL:', testRecordedBlob.value)
+
     console.log('録音データあり:', blob)
     // 再生 or 保存処理などへ
   }
