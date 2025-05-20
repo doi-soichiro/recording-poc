@@ -259,7 +259,7 @@ const stopCareRecording = async () => {
   checkSize(getRecordedBlob, RECORDED_DATA_MIME_TYPE)
 
   // 議事録IDを取得
-  const minutesId = `minutes_${uuidv4().replace(/-/g, '')}`
+  const minutesId = `mi${uuidv4().replace(/-/g, '')}`
 
   // zip化処理
   const recordedZipBlob = await createZipFromRecording(minutesId, recordedBlob, fullResultText)
